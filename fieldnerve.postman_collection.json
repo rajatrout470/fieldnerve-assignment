@@ -1,0 +1,386 @@
+{
+  "info": {
+    "name": "FieldNerve API",
+    "description": "Vendors, Vendor Documents, and Work Requirements API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "userId", "value": "3fa85f64-5717-4562-b3fc-2c963f66afa6" },
+    { "key": "vendorId", "value": "1" },
+    { "key": "vendorDocumentId", "value": "1" },
+    { "key": "workRequirementId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Vendors",
+      "item": [
+        {
+          "name": "Create Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.collectionVariables.set('vendorId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Supplies\",\n  \"category\": \"Electrical\",\n  \"email\": \"acme@example.com\",\n  \"phone\": \"+14155552671\",\n  \"operatingLocation\": \"Dubai\",\n  \"rating\": 4.5,\n  \"createdBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendors",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors"]
+            }
+          }
+        },
+        {
+          "name": "List Vendors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendors",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors"]
+            }
+          }
+        },
+        {
+          "name": "Search Vendors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendors?category=Electrical&status=ACTIVE&minRating=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors"],
+              "query": [
+                { "key": "category", "value": "Electrical" },
+                { "key": "status", "value": "ACTIVE" },
+                { "key": "minRating", "value": "3" },
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "operatingLocation", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendors/{{vendorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors", "{{vendorId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Vendor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operatingLocation\": \"Abu Dhabi\",\n  \"rating\": 4.8,\n  \"updatedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendors/{{vendorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors", "{{vendorId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Vendor Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"updatedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendors/{{vendorId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors", "{{vendorId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Delete Vendor",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/vendors/{{vendorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendors", "{{vendorId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendor Documents",
+      "item": [
+        {
+          "name": "Create Vendor Document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.collectionVariables.set('vendorDocumentId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendorId\": {{vendorId}},\n  \"documentType\": \"INSURANCE\",\n  \"documentNumber\": \"DOC-001\",\n  \"issuingAuthority\": \"Dubai Municipality\",\n  \"issueDate\": \"2025-01-01\",\n  \"expiryDate\": \"2026-08-01\",\n  \"createdBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents"]
+            }
+          }
+        },
+        {
+          "name": "List Vendor Documents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents"]
+            }
+          }
+        },
+        {
+          "name": "Get Expired Documents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents/expired",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents", "expired"]
+            }
+          }
+        },
+        {
+          "name": "Get Expiring Documents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents/expiring?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents", "expiring"],
+              "query": [{ "key": "days", "value": "30" }]
+            }
+          }
+        },
+        {
+          "name": "Get Documents By Vendor",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents/vendor/{{vendorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents", "vendor", "{{vendorId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor Document By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents/{{vendorDocumentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents", "{{vendorDocumentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Vendor Document",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentNumber\": \"DOC-001-REV2\",\n  \"expiryDate\": \"2027-01-01\",\n  \"updatedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents/{{vendorDocumentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents", "{{vendorDocumentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Vendor Document",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/vendor-documents/{{vendorDocumentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["vendor-documents", "{{vendorDocumentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Work Requirements",
+      "item": [
+        {
+          "name": "Create Work Requirement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) pm.collectionVariables.set('workRequirementId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Fix wiring\",\n  \"category\": \"Electrical\",\n  \"location\": \"Dubai\",\n  \"estimatedValue\": \"5000\",\n  \"priority\": \"HIGH\",\n  \"expectedStartDate\": \"2026-08-01\",\n  \"createdBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements"]
+            }
+          }
+        },
+        {
+          "name": "List Work Requirements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements"]
+            }
+          }
+        },
+        {
+          "name": "Search Work Requirements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements?status=OPEN&priority=HIGH",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements"],
+              "query": [
+                { "key": "status", "value": "OPEN" },
+                { "key": "priority", "value": "HIGH" },
+                { "key": "title", "value": "", "disabled": true },
+                { "key": "category", "value": "", "disabled": true },
+                { "key": "location", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Work Requirement By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Work Requirement",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estimatedValue\": \"5500\",\n  \"priority\": \"URGENT\",\n  \"updatedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Work Requirement Status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLOSED\",\n  \"updatedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Assign Vendor",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendorId\": {{vendorId}},\n  \"updatedBy\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}/assign-vendor",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}", "assign-vendor"]
+            }
+          }
+        },
+        {
+          "name": "Delete Work Requirement",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
