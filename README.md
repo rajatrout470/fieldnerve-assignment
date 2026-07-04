@@ -51,6 +51,67 @@ The `recommendations` and `ai` modules were written against the real shapes. See
 
 ## Database Design
 
+### Existing domain tables
+
+These three tables pre-date `recommendations`/`ai` and were not modified — documented
+here for reference since `recommendations` reads through them.
+
+**`vendors`:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `SERIAL` (pk) | auto-increment integer |
+| `name` | `varchar(255)` | |
+| `category` | `varchar(255)` | free-text, matched exactly (case-sensitive) against `work_requirements.category` |
+| `email` | `varchar(255)` | |
+| `phone` | `varchar(50)` | |
+| `operating_location` | `varchar(255)` | free-text, matched against `work_requirements.location` |
+| `rating` | `decimal(3,2)` | default `0`; returned as a string by `pg`, coerced with `Number(...)` at read time in `recommendations` |
+| `status` | `enum` (indexed) | `ACTIVE`, `INACTIVE`, `BLACKLISTED`, `PENDING_VERIFICATION`, `UNAVAILABLE`, `AVAILABLE` — default `PENDING_VERIFICATION` |
+| `created_at` / `updated_at` | `timestamp` | auto-managed |
+| `created_by` | `uuid` | required |
+| `updated_by` | `uuid`, nullable | |
+
+Relation: `Vendor 1—* VendorDocument` (`documents`, no cascade defined on the `Vendor`
+side — cascade is declared on `VendorDocument.vendor` instead).
+
+**`vendor_documents`:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `SERIAL` (pk) | |
+| `vendor_id` | `integer` (indexed) | plain FK column, also backs the `ManyToOne` relation |
+| `document_type` | `enum` | `TAX_REGISTRATION`, `INSURANCE`, `TRADE_LICENSE`, `SAFETY_CERTIFICATE`, `AGREEMENT` |
+| `document_number` | `varchar(255)` | |
+| `issuing_authority` | `varchar(255)` | |
+| `issue_date` | `date` | stored/compared as `YYYY-MM-DD` strings |
+| `expiry_date` | `date` | same; this is the only field driving "validity" — there is **no `status` column** |
+| `created_at` / `updated_at` | `timestamp` | |
+| `created_by` | `uuid` | required |
+| `updated_by` | `uuid`, nullable | |
+
+Relation: `VendorDocument.vendor` is `@ManyToOne(() => Vendor)` with
+`onDelete: 'CASCADE'` — deleting a vendor deletes its documents at the DB level.
+
+**`work_requirements`:**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `SERIAL` (pk) | |
+| `title` | `varchar(255)` | |
+| `category` | `varchar(255)` | matched exactly against `vendors.category` |
+| `location` | `varchar(255)` | matched against `vendors.operating_location` |
+| `estimated_value` | `varchar(255)` | **stored as a string, not numeric** — no arithmetic is ever done on it |
+| `priority` | `enum` (indexed) | `URGENT`, `HIGH`, `MEDIUM`, `LOW` — required, no default |
+| `expected_start_date` | `date` | `YYYY-MM-DD` string |
+| `status` | `enum` (indexed) | `OPEN`, `ASSIGNED`, `CLOSED` — default `OPEN` |
+| `assigned_vendor_id` | `integer`, nullable (indexed) | plain column, no FK relation object (kept independent of `Vendor`), set by `assignVendor()` |
+| `created_at` / `updated_at` | `timestamp` | |
+| `created_by` | `uuid` | required |
+| `updated_by` | `uuid`, nullable | |
+
+### New tables (recommendations)
+
 Three new tables, added in migration `1783153000000-AddRecommendations`:
 
 - **`recommendations`** — one row per scoring run.
@@ -79,6 +140,84 @@ but the entity classes stay decoupled from `Vendor`/`WorkRequirement` as objects
 
 ## API Design
 
+### Vendors (`VendorsController`, base path `/vendors`)
+
+```
+POST   /vendors                 Create a vendor
+GET    /vendors                 List vendors, or search if any filter query param is present
+GET    /vendors/:id             Get one vendor (404 if missing)
+PATCH  /vendors/:id             Partial update
+PATCH  /vendors/:id/status      Update status only ({ status, updatedBy })
+DELETE /vendors/:id             Delete (204), 404 if missing
+```
+
+`GET /vendors` filters (`FilterVendorDto`, all optional, combined with `AND`):
+`name` (`ILIKE %value%`), `category` (exact), `operatingLocation` (`ILIKE %value%`),
+`status` (exact enum), `minRating` (`rating >= value`, coerced to `Number` via
+`class-transformer`). If none are present, `findAll()` is called instead of `search()`.
+
+`VendorsService` is a thin CRUD wrapper over `VendorsRepository` (`Repository<Vendor>`
++ a hand-built `createQueryBuilder` search). `update()` and `remove()` call `findOne()`
+first purely to produce a 404 `NotFoundException` before delegating to the repository
+(`update()`'s own null-check is a second guard against a row disappearing between those
+two calls). `updateStatus()` is a restricted alias of `update()` that only ever writes
+`status` + `updatedBy`, so a status change can't accidentally smuggle in other field
+edits from the same request. There is no `vendorType` field, and no bulk/paginated
+listing — `findAll()`/`search()` always return every matching row.
+
+### Vendor Documents (`VendorDocumentsController`, base path `/vendor-documents`)
+
+```
+POST   /vendor-documents                Create a document
+GET    /vendor-documents                List all documents (with vendor relation loaded)
+GET    /vendor-documents/expired        Documents where expiryDate <= today
+GET    /vendor-documents/expiring       Documents expiring within N days (?days=, default 30)
+GET    /vendor-documents/vendor/:vendorId  Documents for one vendor
+GET    /vendor-documents/:id            Get one document (404 if missing)
+PATCH  /vendor-documents/:id            Partial update (vendorId/createdBy immutable)
+DELETE /vendor-documents/:id            Delete (204), 404 if missing
+```
+
+Route ordering matters: `expired`, `expiring`, and `vendor/:vendorId` are declared
+*before* `:id` in the controller so they aren't swallowed by the `:id` param route.
+
+Same thin service/repository CRUD shape as `Vendors`. The two date-range finders are
+the only non-trivial logic: `findExpiredDocuments()` → `expiryDate <= today` (TypeORM
+`LessThanOrEqual`, formatted as `YYYY-MM-DD`); `findExpiringDocuments(days)` →
+`expiryDate BETWEEN today AND today+days` via a raw `createQueryBuilder` range, computed
+by mutating a `Date` with `setDate()`. Since there's no `status` field, "is this
+document currently valid" is always derived by callers from `expiryDate` at read time —
+`recommendations` does this per mandatory document type (see **Compliance
+completeness** in Recommendation Logic below), rather than trusting a stored flag that
+could go stale.
+
+### Work Requirements (`WorkRequirementsController`, base path `/work-requirements`)
+
+```
+POST   /work-requirements                    Create a work requirement
+GET    /work-requirements                    List, or search if any filter query param is present
+GET    /work-requirements/:id                Get one (404 if missing)
+PATCH  /work-requirements/:id                Partial update
+PATCH  /work-requirements/:id/status         Update status only ({ status, updatedBy })
+PATCH  /work-requirements/:id/assign-vendor  Assign a vendor ({ vendorId, updatedBy })
+DELETE /work-requirements/:id                Delete (204), 404 if missing
+```
+
+`GET /work-requirements` filters (`FilterWorkRequirementDto`): `title` (`ILIKE`),
+`category` (exact), `location` (`ILIKE`), `priority` (exact enum), `status` (exact enum).
+
+Same CRUD shape as the other two modules, plus one workflow method:
+`assignVendor(id, { vendorId, updatedBy })` sets `assignedVendorId` **and** forces
+`status = ASSIGNED` in the same update — a work requirement can't have a vendor
+assigned while still showing as `OPEN`. It does not validate that `vendorId` refers to
+an existing, active, or category-matching vendor (no cross-module read back into
+`VendorsService`) — that validation lives entirely in `recommendations`' scoring phase,
+which is advisory rather than enforced at assignment time. `updateStatus()` is a
+restricted alias of `update()` for the same "narrow the blast radius of one PATCH"
+reason as `Vendors.updateStatus()`.
+
+### Recommendations (`RecommendationsController`, base path `/work-requirements/:id`)
+
 ```
 POST   /work-requirements/:id/recommendations   Run scoring + AI summary, persist, return full result
 GET    /work-requirements/:id/recommendations    Return the latest stored recommendation (does NOT recompute)
@@ -88,9 +227,6 @@ Both return a `Recommendation` with its `results` (one per vendor evaluated) and
 `aiSummary` nested. `:id` refers to a `WorkRequirement.id` (integer). A 404 is returned
 if the work requirement doesn't exist (`POST`/`GET`) or if no recommendation has been
 generated yet for it (`GET` only).
-
-The existing `vendors`, `vendor-documents`, and `work-requirements` CRUD endpoints are
-unchanged — see their controllers for the full list.
 
 ## Recommendation Logic
 
