@@ -348,6 +348,43 @@ database by the time the AI service is called.
   issues multiple statements. A partial failure mid-save is unlikely but not impossible;
   a `queryRunner`-based transaction would close that gap.
 
+## Setup Instructions
+
+Requires Node.js 18+ and a running PostgreSQL instance.
+
+```bash
+git clone https://github.com/rajatrout470/fieldnerve-assignment.git
+cd fieldnerve-assignment
+npm install
+
+cp .env.example .env
+# then edit .env: set DATABASE_URL to your Postgres instance,
+# and optionally GEMINI_API_KEY (see Environment Variables below)
+
+npm run migration:run   # creates all tables, including the 3 added for recommendations
+npm run seed             # optional: inserts sample vendors/documents/work-requirements
+
+npm run start:dev        # starts the API on http://localhost:3000 (or $PORT) with hot reload
+```
+
+Other useful scripts:
+
+```bash
+npm run build             # compile to dist/
+npm run start:prod        # run the compiled build (node dist/main)
+npm run lint              # eslint --fix over src/ and test/
+npm run format             # prettier --write over src/ and test/
+npm test                  # unit tests (jest)
+npm run test:e2e          # end-to-end tests
+npm run test:cov          # unit tests with coverage
+npm run migration:generate # generate a new migration from entity changes
+npm run migration:revert   # roll back the last applied migration
+```
+
+`DB_SYNCHRONIZE` must stay `false` (the default in `.env.example`) — schema changes go
+through migrations, not TypeORM's auto-sync, so `migration:run` is required after a
+fresh clone before the API can serve any requests.
+
 ## Environment Variables
 
 ```
