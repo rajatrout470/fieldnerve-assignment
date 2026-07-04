@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { VendorsModule } from './vendors/vendors.module';
 import { VendorDocumentsModule } from './vendor-documents/vendor-documents.module';
 import { WorkRequirementsModule } from './work-requirements/work-requirements.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { WorkRequirementsModule } from './work-requirements/work-requirements.mo
     VendorsModule,
     VendorDocumentsModule,
     WorkRequirementsModule,
+    RecommendationsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

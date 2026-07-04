@@ -381,6 +381,35 @@
           }
         }
       ]
+    },
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Generate Recommendation",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}", "recommendations"]
+            },
+            "description": "Runs the deterministic scoring engine against every vendor, persists the Recommendation + RecommendationResult rows, generates an AI summary (Gemini if GEMINI_API_KEY is set, otherwise a deterministic fallback), and returns the full result. Always recomputes and creates a new recommendation."
+          }
+        },
+        {
+          "name": "Get Latest Recommendation",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/work-requirements/{{workRequirementId}}/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["work-requirements", "{{workRequirementId}}", "recommendations"]
+            },
+            "description": "Returns the most recently generated recommendation for this work requirement without recomputing. 404s if none has been generated yet."
+          }
+        }
+      ]
     }
   ]
 }
